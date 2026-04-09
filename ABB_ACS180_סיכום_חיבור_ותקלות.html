@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABB ACS180 – סיכום חיבור, תקלות ופתרונות</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #0f1923;
+            color: #e0e0e0;
+            line-height: 1.7;
+            padding: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            font-size: 2em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #00d4ff;
+            padding-bottom: 15px;
+        }
+        h2 {
+            color: #ff9800;
+            font-size: 1.5em;
+            margin-top: 50px;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: #1a2a3a;
+            border-right: 4px solid #ff9800;
+            border-radius: 4px;
+        }
+        h3 {
+            color: #4caf50;
+            font-size: 1.15em;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        h4 {
+            color: #81d4fa;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .meta {
+            color: #aaa;
+            font-size: 0.95em;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #162030;
+            border-radius: 8px;
+            border: 1px solid #1e3a5f;
+        }
+        .meta strong { color: #00d4ff; }
+        hr {
+            border: none;
+            border-top: 1px solid #1e3a5f;
+            margin: 40px 0;
+        }
+        p { margin-bottom: 12px; }
+        strong { color: #fff; }
+        code {
+            background: #1a2a3a;
+            color: #4fc3f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #0a1520;
+            border: 1px solid #1e3a5f;
+            border-radius: 8px;
+            padding: 18px;
+            overflow-x: auto;
+            margin: 15px 0;
+            direction: ltr;
+            text-align: left;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.88em;
+            line-height: 1.5;
+            color: #81d4fa;
+        }
+        pre .comment { color: #6a8759; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.92em;
+        }
+        th {
+            background: #1a3050;
+            color: #00d4ff;
+            padding: 10px 12px;
+            text-align: right;
+            border: 1px solid #1e3a5f;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 12px;
+            border: 1px solid #1e3a5f;
+            background: #12202e;
+        }
+        tr:hover td { background: #1a2a3a; }
+        .warning {
+            background: #2a1a00;
+            border: 1px solid #ff9800;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin: 12px 0;
+            color: #ffcc80;
+        }
+        .warning::before { content: '⚠️ '; }
+        .tip {
+            background: #0a2a1a;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin: 12px 0;
+            color: #a5d6a7;
+        }
+        .tip::before { content: '💡 '; }
+        .problem {
+            background: #2a0a0a;
+            border: 1px solid #f44336;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .problem h3 {
+            color: #f44336;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        .problem .solution {
+            background: #0a2a0a;
+            border: 1px solid #4caf50;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .problem .solution strong { color: #4caf50; }
+        ul, ol {
+            margin: 10px 20px 15px 0;
+            padding-right: 20px;
+        }
+        li { margin-bottom: 5px; }
+        .checklist {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        .checklist li {
+            padding: 6px 30px 6px 0;
+            position: relative;
+            border-bottom: 1px solid #1a2a3a;
+        }
+        .checklist li::before {
+            content: '☐';
+            position: absolute;
+            right: 0;
+            color: #ff9800;
+            font-size: 1.1em;
+        }
+        .checklist li.critical { color: #ff9800; font-weight: bold; }
+        .checklist li.critical::before { content: '⚡'; }
+        .toc {
+            background: #12202e;
+            border: 1px solid #1e3a5f;
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin: 25px 0;
+        }
+        .toc a {
+            color: #4fc3f7;
+            text-decoration: none;
+            display: block;
+            padding: 4px 0;
+        }
+        .toc a:hover { color: #00d4ff; text-decoration: underline; }
+        .summary-box {
+            background: #0a2a1a;
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        .summary-box h3 { color: #4caf50; margin-top: 0; }
+        .lesson-table td:first-child {
+            color: #ff9800;
+            font-weight: bold;
+            min-width: 200px;
+        }
+        .step-num {
+            display: inline-block;
+            background: #ff9800;
+            color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 8px;
+        }
+        .arch-diagram {
+            background: #0a1520;
+            border: 1px solid #1e3a5f;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            direction: ltr;
+            text-align: center;
+            font-family: 'Consolas', monospace;
+            color: #4fc3f7;
+            font-size: 0.85em;
+            line-height: 1.4;
+            white-space: pre;
+        }
+        @media print {
+            body { background: #fff; color: #000; }
+            h1 { color: #003366; border-color: #003366; }
+            h2 { color: #c65100; background: #f5f5f5; border-color: #c65100; }
+            h3 { color: #1b5e20; }
+            table { border: 1px solid #ccc; }
+            th { background: #e3f2fd; color: #003366; }
+            td { background: #fff; border-color: #ccc; }
+            pre { background: #f5f5f5; color: #333; border-color: #ccc; }
+            code { background: #eee; color: #c62828; }
+            .problem { background: #fff5f5; border-color: #c62828; }
+            .problem .solution { background: #f5fff5; border-color: #1b5e20; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>ABB ACS180 – מסמך סיכום: חיבור, תקלות, פתרונות ומסקנות</h1>
+
+<div class="meta">
+    <strong>תאריך:</strong> 9 באפריל 2026<br>
+    <strong>בקר:</strong> ABB ACS180-04S-07A8 (1ph→3ph, 230V)<br>
+    <strong>מנוע:</strong> Siemens 0.25kW, 1350 RPM<br>
+    <strong>תקשורת:</strong> Modbus RTU מעל RS485
+</div>
+
+<div class="toc">
+    <h3 style="color:#00d4ff; margin-bottom:10px;">📑 תוכן עניינים</h3>
+    <a href="#sec1">1. ארכיטקטורת המערכת</a>
+    <a href="#sec2">2. חיבורים פיזיים</a>
+    <a href="#sec3">3. הגדרות בבקר (Parameters)</a>
+    <a href="#sec4">4. הגדרות תוכנה (config.py)</a>
+    <a href="#sec5">5. בעיות שנתקלנו בהן ואיך פתרנו</a>
+    <a href="#sec6">6. מסקנות ולקחים לחיבור הבקר הבא</a>
+    <a href="#sec7">7. צ'קליסט מלא לחיבור בקר חדש</a>
+</div>
+
+<hr>
+
+<!-- ====== SECTION 1 ====== -->
+<h2 id="sec1">1. ארכיטקטורת המערכת</h2>
+
+<div class="arch-diagram">┌──────────┐    USB     ┌──────────────┐   RS485 (A/B)   ┌──────────────────┐   U/V/W   ┌─────────┐
+│  מחשב    │ ────────── │ USB to RS485 │ ─────────────── │ ABB ACS180       │ ────────── │  מנוע   │
+│ (Python) │            │  Converter   │                 │ 04S-07A8         │           │ Siemens │
+└──────────┘            └──────────────┘                 │ 1ph→3ph 230V     │           │ 0.25kW  │
+                                                         └──────────────────┘           └─────────┘</div>
+
+<p><strong>ספריות Python:</strong> <code>pymodbus</code>, <code>pyserial</code>, <code>flask</code> (לדשבורד ווב)</p>
+
+<hr>
+
+<!-- ====== SECTION 2 ====== -->
+<h2 id="sec2">2. חיבורים פיזיים</h2>
+
+<h3>2.1 חיבור RS485 (Modbus RTU)</h3>
+<table>
+    <tr><th>ממיר USB-to-RS485</th><th>טרמינל בבקר ACS180</th><th>הערה</th></tr>
+    <tr><td><strong>A (+)</strong></td><td><strong>Terminal 21 (RS485 A+)</strong></td><td>חוט חיובי</td></tr>
+    <tr><td><strong>B (-)</strong></td><td><strong>Terminal 22 (RS485 B-)</strong></td><td>חוט שלילי</td></tr>
+    <tr><td><strong>GND</strong></td><td><strong>Terminal 24 (DGND)</strong></td><td>אדמה דיגיטלית – <strong>קריטי!</strong></td></tr>
+</table>
+
+<div class="warning"><strong>חובה לוודא</strong> את מספרי הטרמינלים מול התווית על הבקר או ה-User Manual (פרק I/O Terminals).</div>
+
+<h4>Termination & Shielding</h4>
+<table>
+    <tr><th>פרמטר</th><th>ערך</th><th>הערה</th></tr>
+    <tr><td>נגד סיום (Termination)</td><td><strong>120Ω בין A ל-B</strong></td><td>בצד הממיר, אם הכבל ארוך מ-1 מטר</td></tr>
+    <tr><td>Shield / שילד</td><td>צד אחד ל-GND של הממיר</td><td></td></tr>
+    <tr><td>GND משותף</td><td><strong>חובה</strong> – GND ממיר ↔ DGND בבקר (Terminal 24)</td><td></td></tr>
+    <tr><td>אורך כבל מקסימלי</td><td>עד 1200 מטר (תיאורטית)</td><td></td></tr>
+</table>
+
+<h3>2.2 חיבור מנוע (Delta Δ – 230V)</h3>
+<p>המנוע <strong>חייב</strong> להיות ב-Delta כי הבקר מוציא 3×230V:</p>
+<pre>ACS180 Output         Motor Terminal Block
+─────────────         ────────────────────
+   U (T1)  ──────────  U1
+   V (T2)  ──────────  V1
+   W (T3)  ──────────  W1
+
+   גשרים Delta במנוע: U1-W2, V1-U2, W1-V2</pre>
+<p>חבר כבל הארקה (PE) מהבקר למנוע</p>
+
+<hr>
+
+<!-- ====== SECTION 3 ====== -->
+<h2 id="sec3">3. הגדרות בבקר (Parameters)</h2>
+
+<h3>3.1 הגדרות Modbus RTU – קבוצה 58</h3>
+<table>
+    <tr><th>פרמטר</th><th>שם</th><th>ערך שהוגדר</th><th>הערות</th></tr>
+    <tr><td><strong>P58.01</strong></td><td>Protocol Selection</td><td><strong>Modbus RTU</strong></td><td>הפעלת תקשורת מובנית</td></tr>
+    <tr><td><strong>P58.03</strong></td><td>Node Address / Station ID</td><td><strong>1</strong></td><td>כתובת Slave (1-247)</td></tr>
+    <tr><td><strong>P58.04</strong></td><td>Baud Rate</td><td><strong>19200</strong></td><td>ערכים: [1]4800, [2]9600, [3]19200, [4]38400, [5]57600, [6]76800, [7]115200</td></tr>
+    <tr><td><strong>P58.05</strong></td><td>Parity</td><td><strong>8E1 (Even)</strong></td><td>ערכים: [0]8N1, [1]8N2, [2]8E1, [3]8O1</td></tr>
+    <tr><td style="color:#ff9800"><strong>P58.06</strong></td><td>⚡ <strong>Refresh Settings</strong></td><td><strong>ביצוע</strong></td><td style="color:#ff9800"><strong>קריטי!</strong> חובה לבצע אחרי כל שינוי בהגדרות תקשורת</td></tr>
+</table>
+
+<h3>3.2 מקור שליטה – Fieldbus</h3>
+<table>
+    <tr><th>פרמטר</th><th>שם</th><th>ערך</th><th>הערה</th></tr>
+    <tr><td><strong>P10.01</strong></td><td>EXT1 Commands</td><td><strong>Fieldbus (EFB)</strong></td><td>מקור פקודת Start/Stop</td></tr>
+    <tr><td><strong>P10.02</strong></td><td>EXT1 Ref1 Sel</td><td><strong>Fieldbus (EFB)</strong></td><td>מקור הפניית מהירות</td></tr>
+</table>
+<div class="warning">EFB = Embedded Fieldbus = Modbus RTU מובנה. יכול להופיע גם כ-"Command Source" ו-"Reference Source".</div>
+
+<h3>3.3 הגדרות בטיחות – Communication Loss</h3>
+<table>
+    <tr><th>פרמטר</th><th>שם</th><th>ערך מומלץ</th><th>הערה</th></tr>
+    <tr><td><strong>P49.05</strong></td><td>Communication Loss Action</td><td><strong>Fault</strong> או <strong>Last Value</strong></td><td>מה קורה כשהתקשורת נופלת</td></tr>
+    <tr><td><strong>P49.06</strong></td><td>Communication Loss Timeout</td><td><strong>5.0 sec</strong></td><td>זמן עד שמזהים ניתוק</td></tr>
+</table>
+
+<h3>3.4 פרמטרי מנוע – קבוצה 99</h3>
+<table>
+    <tr><th>פרמטר</th><th>שם</th><th>ערך</th><th>הערה</th></tr>
+    <tr><td>P99.01</td><td>Motor Nom Voltage</td><td><strong>230 V</strong></td><td>מתח נומינלי (Delta)</td></tr>
+    <tr><td>P99.02</td><td>Motor Nom Current</td><td><strong>1.35 A</strong></td><td>זרם נומינלי (Delta)</td></tr>
+    <tr><td>P99.03</td><td>Motor Nom Frequency</td><td><strong>50 Hz</strong></td><td>תדר נומינלי</td></tr>
+    <tr><td>P99.04</td><td>Motor Nom Speed</td><td><strong>1350 rpm</strong></td><td>מהירות נומינלית</td></tr>
+    <tr><td>P99.05</td><td>Motor Nom Power</td><td><strong>0.25 kW</strong></td><td>הספק נומינלי</td></tr>
+</table>
+<div class="tip"><strong>Motor ID Run</strong> (P99.06 = Standstill ID) – אופציונלי אך מומלץ מאוד. הבקר מודד את פרמטרי המנוע אוטומטית ומשפר ביצועים.</div>
+
+<hr>
+
+<!-- ====== SECTION 4 ====== -->
+<h2 id="sec4">4. הגדרות תוכנה (config.py)</h2>
+
+<h3>4.1 הגדרות Serial</h3>
+<pre>COM_PORT   = "COM4"     <span class="comment"># פורט USB-to-RS485</span>
+BAUD_RATE  = 19200      <span class="comment"># חייב להתאים ל-P58.04</span>
+PARITY     = "E"        <span class="comment"># "E"=Even – חייב להתאים ל-P58.05</span>
+STOP_BITS  = 1
+BYTE_SIZE  = 8
+SLAVE_ID   = 1          <span class="comment"># חייב להתאים ל-P58.03</span>
+TIMEOUT    = 1.0        <span class="comment"># שניות</span></pre>
+
+<h3>4.2 כתובות רגיסטרים (Modbus Holding Registers)</h3>
+<table>
+    <tr><th>רגיסטר</th><th>כתובת</th><th>סוג</th><th>תיאור</th><th>סקאלה</th></tr>
+    <tr><td><strong>Control Word</strong></td><td>0</td><td>Write</td><td>פקודת שליטה (Start/Stop/Reset)</td><td>Bitmask</td></tr>
+    <tr><td><strong>Speed Reference</strong></td><td>1</td><td>Write</td><td>הפניית מהירות/תדר</td><td>0-20000 = 0-50Hz</td></tr>
+    <tr><td><strong>Status Word</strong></td><td>3</td><td>Read</td><td>סטטוס הבקר</td><td>Bitmask</td></tr>
+    <tr><td><strong>Actual Speed</strong></td><td>3</td><td>Read</td><td>מהירות בפועל</td><td>0-20000 = 0-50Hz</td></tr>
+    <tr><td><strong>Actual Current</strong></td><td>4</td><td>Read</td><td>זרם בפועל</td><td>×0.1A</td></tr>
+</table>
+<div class="warning">חובה לאמת כתובות מול ABB ACS180 Firmware Manual → Modbus Register Map</div>
+
+<h3>4.3 ערכי Control Word</h3>
+<table>
+    <tr><th>שם</th><th>ערך</th><th>ביטים</th><th>פעולה</th></tr>
+    <tr><td><strong>CW_STOP</strong></td><td><code>0x047E</code></td><td>All enables ON, bit0=0</td><td>עצירה מבוקרת (ramp)</td></tr>
+    <tr><td><strong>CW_RUN</strong></td><td><code>0x047F</code></td><td>All enables ON, bit0=1</td><td>הפעלה</td></tr>
+    <tr><td><strong>CW_FAULT_RESET</strong></td><td><code>0x04FF</code></td><td>bit7=1</td><td>איפוס תקלה (rising edge)</td></tr>
+    <tr><td><strong>CW_COAST_STOP</strong></td><td><code>0x047C</code></td><td>bit1=0</td><td>עצירה חופשית</td></tr>
+    <tr><td><strong>CW_EMERGENCY</strong></td><td><code>0x047B</code></td><td>bit2=0</td><td>עצירת חירום</td></tr>
+</table>
+
+<h4>מבנה Control Word (ABB Standard Profile)</h4>
+<table>
+    <tr><th>ביט</th><th>תפקיד</th><th>0</th><th>1</th></tr>
+    <tr><td>0</td><td>ON/OFF1</td><td>Stop (ramp)</td><td>Start</td></tr>
+    <tr><td>1</td><td>OFF2</td><td>Coast stop</td><td>Normal</td></tr>
+    <tr><td>2</td><td>OFF3</td><td>Emergency stop</td><td>Normal</td></tr>
+    <tr><td>3</td><td>Enable Operation</td><td>Disable</td><td>Enable</td></tr>
+    <tr><td>4</td><td>Ramp enable</td><td>-</td><td>Enable</td></tr>
+    <tr><td>5</td><td>Unfreeze ramp</td><td>-</td><td>Enable</td></tr>
+    <tr><td>6</td><td>Unfreeze setpoint</td><td>-</td><td>Enable</td></tr>
+    <tr><td>7</td><td>Fault reset</td><td>-</td><td>Reset (edge)</td></tr>
+    <tr><td>10</td><td>Control by PLC</td><td>-</td><td>Active</td></tr>
+</table>
+
+<h3>4.4 ביטי Status Word</h3>
+<table>
+    <tr><th>ביט</th><th>שם</th><th>משמעות</th></tr>
+    <tr><td>0</td><td>Ready to switch on</td><td>בקר מוכן</td></tr>
+    <tr><td>1</td><td>Switched on / Ready to run</td><td>מוכן לריצה</td></tr>
+    <tr><td>2</td><td>Operation enabled / Running</td><td>פועל</td></tr>
+    <tr><td>3</td><td>Fault</td><td>תקלה פעילה</td></tr>
+    <tr><td>4</td><td>Voltage enabled</td><td>מתח מופעל</td></tr>
+    <tr><td>5</td><td>Quick stop</td><td>עצירה מהירה</td></tr>
+    <tr><td>6</td><td>Switch on disabled</td><td>הפעלה מנוטרלת</td></tr>
+    <tr><td>7</td><td>Warning</td><td>אזהרה</td></tr>
+</table>
+<div class="tip"><strong>Status Word = 0</strong> → הבקר מתעלם מ-Modbus! צריך להפעיל Remote mode ולהגדיר Fieldbus כמקור שליטה.</div>
+
+<h3>4.5 סקאלת מהירות</h3>
+<pre>SPEED_REF_SCALE = 20000    <span class="comment"># 20000 = 50Hz (0-20000 = 0-50Hz)</span>
+MOTOR_NOM_RPM   = 1350     <span class="comment"># RPM נומינלי</span></pre>
+<p><strong>חישוב:</strong></p>
+<ul>
+    <li>אחוז = <code>raw_value × 100 / 20000</code></li>
+    <li>RPM = <code>percent × 1350 / 100</code></li>
+    <li>כתיבה: <code>raw = int(percent × 20000 / 100)</code></li>
+</ul>
+
+<hr>
+
+<!-- ====== SECTION 5 ====== -->
+<h2 id="sec5">5. בעיות שנתקלנו בהן ואיך פתרנו</h2>
+
+<!-- Problem 1 -->
+<div class="problem">
+    <h3>🔴 בעיה 1: אין תגובה מהבקר בכלל</h3>
+    <p><strong>תסמינים:</strong> שליחת Modbus frames – אפס תגובה מהבקר.</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>comm_test.py</code> – בדיקה שיטתית של כל קצבי שידור (9600, 19200, 38400…) וכל סוגי Parity</li>
+        <li><code>scan.py</code> – סריקה עמוקה של כל שילובי baud × parity × slave ID × register</li>
+        <li><code>diagnose.py</code> – 5 שלבי אבחון: פתיחת פורט, loopback, כל ה-combos, function codes שונים, בדיקת חומרה</li>
+        <li><code>test_all_combos.py</code> – כל השילובים מתוך המדריך של ACS180</li>
+    </ol>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ <strong>P58.06 – Refresh Settings</strong>: הגדרות התקשורת לא נכנסו לתוקף עד שביצענו Refresh!<br>
+        ✅ <strong>Power cycle</strong>: כיבוי-הדלקה של הבקר אחרי שינוי הגדרות תקשורת<br>
+        ✅ ודאנו ש-P58.01 = Modbus RTU (ולא Disabled)
+    </div>
+</div>
+
+<!-- Problem 2 -->
+<div class="problem">
+    <h3>🔴 בעיה 2: Echo מזויף מהממיר (KA301)</h3>
+    <p><strong>תסמינים:</strong> קיבלנו בחזרה בית <code>0x00</code> או echo של מה ששלחנו – נראה כמו תגובה אבל אינו תגובה אמיתית.</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>echo_test.py</code> – שליחת frames שונים ובדיקה אם התגובה משתנה בהתאם</li>
+        <li><code>aggressive_test.py</code> – שליחת 0xAA ובדיקה אם חוזר 0xAA (echo)</li>
+        <li><strong>Silence test</strong> – המתנה בלי לשלוח כלום ובדיקה אם מגיעים bytes (=רעש קו)</li>
+    </ol>
+    <p><strong>ממצאים:</strong></p>
+    <ul>
+        <li>הממיר KA301 מחזיר echo של TX חזרה ל-RX</li>
+        <li><code>0x00</code> שקיבלנו היה רעש על הקו ולא תגובה אמיתית</li>
+    </ul>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ זיהוי שה-echo הוא מהממיר ולא מהבקר<br>
+        ✅ תגובה אמיתית היא ≥5 bytes עם slave ID תואם ו-function code תקין<br>
+        ✅ אם מקבלים echo: בדוק אם חיווט TX מתחבר ל-RX בממיר
+    </div>
+</div>
+
+<!-- Problem 3 -->
+<div class="problem">
+    <h3>🔴 בעיה 3: חיווט A/B הפוך</h3>
+    <p><strong>תסמינים:</strong> הממיר עובד (loopback תקין), אך אין תגובה מהבקר.</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>loopback_test.py</code> – קיצור A ו-B יחד וודאנו שהממיר שולח ומקבל</li>
+        <li><code>test_wiring.py</code> – סקריפט שרץ בלולאה כל 2 שניות – מזהה מיד כשהתקשורת עולה</li>
+        <li><code>quick_raw_test.py</code> – בדיקה מהירה אחרי החלפת חוטים</li>
+    </ol>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ <strong>החלפת A ו-B</strong> – חיבור A+ של הממיר ל-A+ של הבקר (ולא בהיפוך)<br>
+        ✅ שימוש ב-<code>test_wiring.py</code> לאימות בזמן אמת תוך כדי החלפת חוטים פיזית
+    </div>
+</div>
+
+<!-- Problem 4 -->
+<div class="problem">
+    <h3>🔴 בעיה 4: קצב שידור לא תואם</h3>
+    <p><strong>תסמינים:</strong> הממיר שולח, אין תגובה מהבקר (או תגובה משובשת).</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ul>
+        <li><code>comm_test.py</code> – raw Modbus test בכל הקצבים: 4800, 9600, 19200, 38400, 57600, 115200</li>
+        <li><code>test_all_combos.py</code> – כל השילובים מהמדריך</li>
+    </ul>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ וידאנו ש-<strong>P58.04 בבקר = 19200</strong> (ערך [3])<br>
+        ✅ וידאנו ש-<strong>P58.05 בבקר = 8E1</strong> (ערך [2]) – Even Parity<br>
+        ✅ התאמנו ב-<code>config.py</code>: <code>BAUD_RATE = 19200</code>, <code>PARITY = "E"</code>
+    </div>
+</div>
+
+<!-- Problem 5 -->
+<div class="problem">
+    <h3>🔴 בעיה 5: Status Word = 0 (בקר לא נשלט דרך Modbus)</h3>
+    <p><strong>תסמינים:</strong> תקשורת עובדת (קריאות חוזרות עם ערכים), אבל Status Word = 0 ופקודות RUN לא עובדות.</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>debug_regs3.py</code> – ניתוח מעמיק של Status Word</li>
+        <li><code>live_monitor.py</code> – מעקב בזמן אמת אחרי Status Word תוך שינוי הגדרות בפאנל</li>
+    </ol>
+    <p><strong>ממצאים:</strong> Status Word = 0 אומר: <strong>הבקר מתעלם לחלוטין מ-Modbus</strong>. הבקר צריך להיות במצב REMOTE ומקור השליטה חייב להיות Fieldbus.</p>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ לחיצת <strong>LOC/REM</strong> בפאנל הבקר → מעבר למצב REMOTE<br>
+        ✅ הגדרת <strong>P10.01 = Fieldbus (EFB)</strong> – מקור פקודות Start/Stop<br>
+        ✅ הגדרת <strong>P10.02 = Fieldbus (EFB)</strong> – מקור הפניית מהירות<br>
+        ✅ שימוש ב-<code>live_monitor.py</code> לראות בזמן אמת מתי Status Word משתנה מ-0
+    </div>
+</div>
+
+<!-- Problem 6 -->
+<div class="problem">
+    <h3>🔴 בעיה 6: כתיבת Speed Reference לא נשמרת</h3>
+    <p><strong>תסמינים:</strong> כותבים ערך 5000 לרגיסטר 1, קוראים בחזרה וזה 0 (הבקר דורס).</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>debug_regs.py</code> – Write test של CW_RUN לרגיסטר 0</li>
+        <li><code>debug_regs2.py</code> – Write + readback test לרגיסטר 1</li>
+        <li><code>debug_regs3.py</code> – Write test מפורט עם אימות</li>
+    </ol>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ הבקר דורס ערכים כשהוא לא במצב Fieldbus control<br>
+        ✅ אחרי הגדרת P10.01 ו-P10.02 ל-Fieldbus → כתיבות נשמרות<br>
+        ✅ רצף הפעלה נכון: קודם STOP, המתנה, אח"כ RUN
+    </div>
+</div>
+
+<!-- Problem 7 -->
+<div class="problem">
+    <h3>🔴 בעיה 7: תקלה 6681 (Communication Loss)</h3>
+    <p><strong>תסמינים:</strong> הבקר נכנס לתקלה 6681 כשאין תקשורת פעילה.</p>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ פעולת Fault Reset בפאנל הבקר<br>
+        ✅ <strong>מיד</strong> אחרי Reset – להריץ את סקריפט הבדיקה (לפני שה-timeout גורם לתקלה חוזרת)<br>
+        ✅ הגדרת P49.06 (Timeout) לערך מספיק גבוה בזמן Development<br>
+        ✅ שימוש ב-<code>fault_reset()</code> בקוד לפני פקודת START
+    </div>
+</div>
+
+<!-- Problem 8 -->
+<div class="problem">
+    <h3>🔴 בעיה 8: בעיות עם ממיר USB-to-RS485</h3>
+    <p><strong>תסמינים:</strong> הממיר לא מזוהה, TX/RX LED לא מהבהבים, אין תקשורת.</p>
+    <p><strong>מה ניסינו:</strong></p>
+    <ol>
+        <li><code>ftdi_diag.py</code> – בדיקת FTDI: RTS/DTR control, RS485 mode flag, VID/PID</li>
+        <li><code>final_test.py</code> – סריקת כל פורטי COM אחרי ניתוק-חיבור USB</li>
+        <li><code>loopback_test.py</code> – אימות שהממיר עצמו עובד</li>
+    </ol>
+    <div class="solution">
+        <strong>פתרון:</strong><br>
+        ✅ ניתוק וחיבור מחדש של כבל USB (כולל בדיקת Device Manager)<br>
+        ✅ בדיקת TX LED – אם לא מהבהב, הממיר לא שולח<br>
+        ✅ loopback test (קיצור A-B) לאימות<br>
+        ✅ ניסיון עם RTS/DTR שונים (חלק מהממירים משתמשים ב-RTS להפעלת TX)
+    </div>
+</div>
+
+<hr>
+
+<!-- ====== SECTION 6 ====== -->
+<h2 id="sec6">6. מסקנות ולקחים לחיבור הבקר הבא</h2>
+
+<h3>📋 סדר פעולות נכון לחיבור בקר ABB חדש</h3>
+<ol>
+    <li><span class="step-num">1</span> <strong>חיווט פיזי</strong> – חבר A→A, B→B, GND→DGND. שים נגד 120Ω אם כבל ארוך.</li>
+    <li><span class="step-num">2</span> <strong>הגדרות תקשורת בפאנל</strong> – P58.01=Modbus RTU, P58.03=1, P58.04=19200, P58.05=8E1</li>
+    <li><span class="step-num">3</span> <strong>⚡ P58.06 – REFRESH!</strong> – אחרי כל שינוי בקבוצה 58</li>
+    <li><span class="step-num">4</span> <strong>Power Cycle</strong> – כבה והדלק את הבקר</li>
+    <li><span class="step-num">5</span> <strong>בדוק loopback</strong> – קצר A-B בממיר, הרץ <code>loopback_test.py</code></li>
+    <li><span class="step-num">6</span> <strong>הרץ <code>comm_test.py</code></strong> – ודא שהבקר מגיב</li>
+    <li><span class="step-num">7</span> <strong>הגדר Fieldbus</strong> – P10.01=EFB, P10.02=EFB, LOC/REM→REMOTE</li>
+    <li><span class="step-num">8</span> <strong>הזן פרמטרי מנוע</strong> – P99.01-P99.05</li>
+    <li><span class="step-num">9</span> <strong>התחל בנמוך</strong> – מהירות 10-20% בלבד</li>
+    <li><span class="step-num">10</span> <strong>הרץ Motor ID Run</strong> – P99.06 לאופטימיזציה</li>
+</ol>
+
+<h3>⚡ לקחים קריטיים</h3>
+<table class="lesson-table">
+    <tr><th>לקח</th><th>הסבר</th></tr>
+    <tr><td>P58.06 חובה</td><td>שינוי פרמטרי תקשורת לא נכנס לתוקף בלי Refresh / Power Cycle</td></tr>
+    <tr><td>LOC/REM</td><td>הבקר חייב להיות ב-REMOTE כדי לקבל פקודות Modbus</td></tr>
+    <tr><td>Status Word = 0 = בעיה</td><td>אם SW=0, הבקר מתעלם – בדקו P10.01/P10.02</td></tr>
+    <tr><td>A/B יכולים להיות הפוכים</td><td>אם אין תגובה – נסו להחליף A ו-B</td></tr>
+    <tr><td>Echo ≠ תגובה</td><td>echo מהממיר (0x00 או frame שלם בחזרה) הוא לא תגובה מהבקר</td></tr>
+    <tr><td>תגובה אמיתית ≥ 5 bytes</td><td>slave ID + function code + data + CRC</td></tr>
+    <tr><td>STOP לפני RUN</td><td>רצף Control Word: שלח STOP ← המתן 100-300ms ← שלח RUN</td></tr>
+    <tr><td>Fault Reset = rising edge</td><td>שלח CW_FAULT_RESET, המתן 300ms, חזור ל-CW_STOP</td></tr>
+    <tr><td>Timeout בזמן פיתוח</td><td>הגדל P49.06 כדי למנוע תקלות 6681 חוזרות</td></tr>
+</table>
+
+<h3>🔧 כלי דיבוג מומלצים (לפי סדר שימוש)</h3>
+<table>
+    <tr><th>סקריפט</th><th>מתי להשתמש</th></tr>
+    <tr><td><code>loopback_test.py</code></td><td>ראשית – ודא שהממיר עובד</td></tr>
+    <tr><td><code>comm_test.py</code></td><td>שלב 2 – בדוק אם הבקר מגיב</td></tr>
+    <tr><td><code>test_wiring.py</code></td><td>אם אין תגובה – החלף חוטים בזמן אמת</td></tr>
+    <tr><td><code>test_all_combos.py</code></td><td>אם לא בטוחים מה ה-baud/parity בבקר</td></tr>
+    <tr><td><code>live_monitor.py</code></td><td>מעקב אחרי שינויים בפאנל</td></tr>
+    <tr><td><code>debug_regs3.py</code></td><td>ניתוח Status Word וזיהוי בעיית command source</td></tr>
+    <tr><td><code>scan_regs.py</code></td><td>זיהוי רגיסטרים פעילים תוך כדי ריצה</td></tr>
+    <tr><td><code>run_motor_test.py</code></td><td>בדיקת הפעלת מנוע (START 10% → 10 שניות → STOP)</td></tr>
+</table>
+
+<hr>
+
+<!-- ====== SECTION 7 ====== -->
+<h2 id="sec7">7. צ'קליסט מלא לחיבור בקר חדש</h2>
+
+<h3>שלב א': חומרה</h3>
+<ul class="checklist">
+    <li>ממיר USB-to-RS485 מחובר למחשב (בדוק Device Manager → COM port)</li>
+    <li>חוט A+ ממיר → Terminal 21 (A+) בבקר</li>
+    <li>חוט B- ממיר → Terminal 22 (B-) בבקר</li>
+    <li>חוט GND ממיר → Terminal 24 (DGND) בבקר</li>
+    <li>נגד 120Ω בין A ל-B (אם כבל > 1 מטר)</li>
+    <li>מנוע מחובר Delta (U1-W2, V1-U2, W1-V2)</li>
+    <li>כבל הארקה PE מחובר</li>
+</ul>
+
+<h3>שלב ב': הגדרות בקר – תקשורת</h3>
+<ul class="checklist">
+    <li>P58.01 = Modbus RTU (Enabled)</li>
+    <li>P58.03 = 1 (Node Address)</li>
+    <li>P58.04 = 19200 (Baud Rate) – ערך [3]</li>
+    <li>P58.05 = 8E1 (Parity) – ערך [2]</li>
+    <li class="critical">P58.06 = Refresh Settings – ביצוע!</li>
+    <li class="critical">Power Cycle – כיבוי והדלקה</li>
+</ul>
+
+<h3>שלב ג': הגדרות בקר – שליטה</h3>
+<ul class="checklist">
+    <li>P10.01 = Fieldbus (EFB) – מקור פקודות</li>
+    <li>P10.02 = Fieldbus (EFB) – מקור מהירות</li>
+    <li class="critical">LOC/REM → REMOTE</li>
+    <li>P49.05 = Fault (Communication Loss Action)</li>
+    <li>P49.06 = 10 sec (Communication Loss Timeout – ערך גבוה לפיתוח)</li>
+</ul>
+
+<h3>שלב ד': פרמטרי מנוע</h3>
+<ul class="checklist">
+    <li>P99.01 = מתח נומינלי (מהלוחית של המנוע)</li>
+    <li>P99.02 = זרם נומינלי (מהלוחית, ערך Delta)</li>
+    <li>P99.03 = תדר נומינלי (50 Hz)</li>
+    <li>P99.04 = מהירות נומינלית RPM</li>
+    <li>P99.05 = הספק נומינלי kW</li>
+    <li>(אופציונלי) P99.06 = Motor ID Run → Standstill ID</li>
+</ul>
+
+<h3>שלב ה': אימות תוכנה</h3>
+<ul class="checklist">
+    <li>עדכן config.py – COM_PORT, BAUD_RATE, PARITY, SLAVE_ID</li>
+    <li>הרץ loopback_test.py – ממיר עובד?</li>
+    <li>הרץ comm_test.py – בקר מגיב?</li>
+    <li>הרץ quick_test.py – קריאת רגיסטרים?</li>
+    <li>Status Word ≠ 0 ? (אם 0 → חזור לשלב ג')</li>
+    <li>הרץ run_motor_test.py – מנוע מסתובב?</li>
+    <li>הרץ web_app.py --real – דשבורד עובד?</li>
+</ul>
+
+<h3>שלב ו': בטיחות</h3>
+<ul class="checklist">
+    <li>אל תעבוד על חיבורים כשהבקר מחובר לחשמל!</li>
+    <li>המנוע מעוגן ולא יכול לזוז</li>
+    <li>התחל תמיד במהירות נמוכה (10-20%)</li>
+    <li>גישה פיזית לניתוק חשמל (kill switch)</li>
+    <li class="critical">הבקר מכיל מתח מסוכן גם אחרי ניתוק – המתן 5 דקות</li>
+</ul>
+
+<hr>
+
+<!-- ====== SUMMARY ====== -->
+<div class="summary-box">
+    <h3>📌 סיכום קצר – ההגדרה שעבדה בסוף</h3>
+<pre style="background:#0a1a10; border-color:#4caf50;">COM_PORT  = COM4
+BAUD_RATE = 19200
+PARITY    = Even (8E1)
+SLAVE_ID  = 1
+STOP_BITS = 1
+BYTE_SIZE = 8
+
+Control Word  → Register 0  (write)
+Speed Ref     → Register 1  (write, 0-20000 = 0-50Hz)
+Status Word   → Register 3  (read)
+Actual Current→ Register 4  (read, ×0.1A)
+
+CW_RUN  = 0x047F
+CW_STOP = 0x047E</pre>
+
+    <h3 style="margin-top:20px;">🔥 3 הבעיות הכי נפוצות</h3>
+    <ol>
+        <li><strong>שכחנו P58.06 Refresh</strong> → בקר לא מגיב</li>
+        <li><strong>A/B הפוכים</strong> → בקר לא מגיב</li>
+        <li><strong>לא הגדרנו Fieldbus כמקור שליטה</strong> → Status Word = 0</li>
+    </ol>
+</div>
+
+<p style="text-align:center; color:#555; margin-top:40px; font-size:0.85em;">
+    מסמך זה נוצר על סמך פרויקט <a href="https://github.com/ace-1981/ABB-ACS180" style="color:#4fc3f7;">ace-1981/ABB-ACS180</a> | אפריל 2026
+</p>
+
+</body>
+</html>
