@@ -70,3 +70,7 @@ SCALE_FREQ  = 1000          # P46.02 – 20000 → 100.0 Hz
 # Address helper: PDU = group*100 + index − 1
 def param_addr(group: int, index: int) -> int:
     return group * 100 + index - 1
+
+# P96.07 – "Parameter save manually": saves fieldbus changes to NVM
+PARAM_SAVE_ADDR = param_addr(96, 7)   # = 9606
+PARAM_SAVE_VALUE = 1                   # 1 = Save (reverts to 0 = Done)

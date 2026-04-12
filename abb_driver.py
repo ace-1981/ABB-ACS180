@@ -121,15 +121,23 @@ class RealABBDrive(ABBDriveBase):
 
     def _setup_efb_params(self):
         """Set EFB (Embedded Fieldbus) parameters required for Modbus control.
-        These may revert on drive power-cycle, so we set them on every connect."""
+        Reads first, writes only if needed, then saves to NVM permanently."""
         params = [
             (28, 11, 8,  "EXT1 freq ref1 = EFB"),
             (22, 18, 8,  "EXT2 speed ref1 = EFB"),
             (20,  6, 14, "EXT2 commands = EFB"),
         ]
-        print("[SETUP] Configuring EFB parameters...")
+        print("[SETUP] Checking EFB parameters...")
+        changed = False
         for group, index, value, desc in params:
             addr = config.param_addr(group, index)
+            # Read current value first
+            regs = self._read_registers(addr, 1)
+            current = regs[0] if regs and len(regs) > 0 else None
+            if current == value:
+                print(f"  P{group:02d}.{index:02d} = {value} ({desc}) [OK already]")
+                continue
+            # Need to write
             try:
                 result = self.client.write_register(
                     address=addr, value=value, device_id=self.slave_id
@@ -137,7 +145,31 @@ class RealABBDrive(ABBDriveBase):
                 ok = not result.isError()
             except Exception:
                 ok = False
-            print(f"  P{group:02d}.{index:02d} = {value} ({desc}) [{'OK' if ok else 'FAIL'}]")
+            print(f"  P{group:02d}.{index:02d} = {current} → {value} ({desc}) [{'OK' if ok else 'FAIL'}]")
+            if ok:
+                changed = True
+
+        if changed:
+            self._save_params_to_nvm()
+        else:
+            print("[SETUP] All EFB parameters already correct – no save needed.")
+
+    def _save_params_to_nvm(self):
+        """Save all parameter changes to permanent memory via P96.07."""
+        print("[SETUP] Saving parameters to NVM (P96.07)...")
+        try:
+            result = self.client.write_register(
+                address=config.PARAM_SAVE_ADDR,
+                value=config.PARAM_SAVE_VALUE,
+                device_id=self.slave_id,
+            )
+            if result.isError():
+                print(f"[ERROR] P96.07 save failed: {result}")
+            else:
+                time.sleep(1)  # Give drive time to write to flash
+                print("[OK] Parameters saved to permanent memory!")
+        except Exception as e:
+            print(f"[ERROR] P96.07 save exception: {e}")
 
     def disconnect(self) -> None:
         if self._connected:
