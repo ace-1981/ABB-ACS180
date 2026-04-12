@@ -251,16 +251,20 @@ HTML_PAGE = """
             <h2>📊 סטטוס</h2>
             <div class="status-grid">
                 <div class="status-item">
+                    <div class="label">תדר</div>
+                    <div class="value" id="freq-hz">-- Hz</div>
+                </div>
+                <div class="status-item">
                     <div class="label">מהירות</div>
                     <div class="value" id="speed-rpm">-- RPM</div>
                 </div>
                 <div class="status-item">
-                    <div class="label">אחוז</div>
-                    <div class="value" id="speed-pct">-- %</div>
-                </div>
-                <div class="status-item">
                     <div class="label">זרם</div>
                     <div class="value" id="current">-- A</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">אחוז</div>
+                    <div class="value" id="speed-pct">-- %</div>
                 </div>
                 <div class="status-item">
                     <div class="label">Status Word</div>
@@ -387,6 +391,7 @@ HTML_PAGE = """
 
                 document.getElementById('speed-rpm').textContent = d.speed_rpm.toFixed(0) + ' RPM';
                 document.getElementById('speed-pct').textContent = d.speed_percent.toFixed(1) + '%';
+                document.getElementById('freq-hz').textContent = d.frequency_hz.toFixed(1) + ' Hz';
                 document.getElementById('current').textContent = d.current_a.toFixed(2) + ' A';
                 document.getElementById('status-word').textContent = d.status_hex;
 

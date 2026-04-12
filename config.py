@@ -23,11 +23,13 @@ TIMEOUT = 1.0               # Serial timeout in seconds
 # You MUST verify these against the ACS180 Firmware Manual
 # Look for: "Modbus Register Map" or "Fieldbus Registers"
 #
-REG_CONTROL_WORD = 0        # Control Word (write) - Modbus 40001
-REG_SPEED_REF = 1           # Frequency Reference (write) - Modbus 40002, 0..20000 = 0..50Hz
-REG_STATUS_WORD = 3         # Status Word (read) - Modbus 40004
-REG_ACTUAL_SPEED = 3        # Actual Speed (read) - same as status block
-REG_ACTUAL_CURRENT = 4      # Actual Current (read) – × 0.1 A
+# Data I/O registers (confirmed via P58.101–P58.106)
+REG_CONTROL_WORD = 0        # CW  – Control Word (write)
+REG_SPEED_REF    = 1        # Ref1 – Speed / Frequency reference (write), 0‥20000
+REG_REF2         = 2        # Ref2 – Secondary reference (write)
+REG_STATUS_WORD  = 3        # SW  – Status Word (read)
+REG_ACTUAL_1     = 4        # Act1 – Actual value 1 (read) – speed / freq
+REG_ACTUAL_2     = 5        # Act2 – Actual value 2 (read) – current
 
 # ──────────────────────────────────────────────
 # Control Word Values (ABB Standard Profile)
@@ -56,7 +58,15 @@ SW_WARNING            = 0x0080   # Bit 7
 # ──────────────────────────────────────────────
 # Motor / Speed Settings
 # ──────────────────────────────────────────────
-MOTOR_NOM_RPM = 1350        # Nominal motor speed (rpm)
+MOTOR_NOM_RPM  = 1350       # Nominal motor speed (rpm)
 MOTOR_NOM_FREQ = 50         # Nominal frequency (Hz)
-SPEED_REF_MAX = 20000       # 20000 = 50.00 Hz (full scale)
-SPEED_REF_SCALE = 20000     # 20000 = 50Hz (0-20000 = 0-50Hz)
+SPEED_REF_MAX  = 20000      # Full scale reference
+SPEED_REF_SCALE = 20000     # 20000 = 100 % of nominal
+
+# Scaling factors (from P46.01 / P46.02 on drive)
+SCALE_SPEED = 500           # P46.01 – 20000 → 500 rpm
+SCALE_FREQ  = 1000          # P46.02 – 20000 → 100.0 Hz
+
+# Address helper: PDU = group*100 + index − 1
+def param_addr(group: int, index: int) -> int:
+    return group * 100 + index - 1

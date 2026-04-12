@@ -217,19 +217,28 @@ class RealABBDrive(ABBDriveBase):
             print(f"[OK] Speed set to {percent:.1f}%")
         return ok
 
+    @staticmethod
+    def _signed16(v: int) -> int:
+        """Convert unsigned 16-bit to signed."""
+        return v if v < 0x8000 else v - 0x10000
+
     def read_status(self) -> dict | None:
-        # Read registers: status_word, actual_speed, actual_current
-        regs = self._read_registers(config.REG_STATUS_WORD, 3)
-        if regs is None or len(regs) < 1:
+        # Read all 6 Data I/O registers at once (CW, Ref1, Ref2, SW, Act1, Act2)
+        regs = self._read_registers(0, 6)
+        if regs is None or len(regs) < 6:
             return None
 
-        status_word = regs[0]
-        actual_speed_raw = regs[1] if len(regs) > 1 else 0
-        actual_current_raw = regs[2] if len(regs) > 2 else 0
+        status_word = regs[3]
+        act1_raw = self._signed16(regs[4])
+        act2_raw = self._signed16(regs[5])
 
-        speed_pct = actual_speed_raw * 100.0 / config.SPEED_REF_SCALE
+        # Act1 scaling: 0-20000 = 0-100% of nominal
+        speed_pct = abs(act1_raw) * 100.0 / config.SPEED_REF_SCALE
         speed_rpm = speed_pct * config.MOTOR_NOM_RPM / 100.0
-        current_a = actual_current_raw * 0.1  # ⚠️ Scale may differ – verify!
+        freq_hz = speed_pct * config.MOTOR_NOM_FREQ / 100.0
+
+        # Act2: current in 0.1 A units (verify with your drive)
+        current_a = abs(act2_raw) * 0.1
 
         return {
             "status_word": status_word,
@@ -241,6 +250,7 @@ class RealABBDrive(ABBDriveBase):
             "warning": bool(status_word & config.SW_WARNING),
             "speed_percent": round(speed_pct, 2),
             "speed_rpm": round(speed_rpm, 1),
+            "frequency_hz": round(freq_hz, 1),
             "current_a": round(current_a, 2),
         }
 
@@ -328,6 +338,7 @@ class MockABBDrive(ABBDriveBase):
             "warning": False,
             "speed_percent": round(self._speed_pct, 2),
             "speed_rpm": round(speed_rpm, 1),
+            "frequency_hz": round(self._speed_pct * config.MOTOR_NOM_FREQ / 100.0, 1),
             "current_a": round(current, 2),
         }
 
