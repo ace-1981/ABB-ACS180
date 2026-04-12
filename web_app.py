@@ -234,9 +234,48 @@ HTML_PAGE = """
         .log-cmd { color: #00d4ff; }
         .log-info { color: #888; }
 
+        /* Params panel */
+        .params-panel { grid-column: 1 / -1; }
+        .btn-toggle-params {
+            background: #0f3460;
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .btn-toggle-params:hover { background: #16213e; filter: brightness(1.3); }
+        #params-table {
+            display: none;
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Consolas', monospace;
+            font-size: 0.82em;
+            direction: ltr;
+            text-align: left;
+        }
+        #params-table th {
+            background: #0f3460;
+            padding: 6px 10px;
+            color: #00d4ff;
+            text-align: left;
+        }
+        #params-table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #0f3460;
+        }
+        #params-table tr:hover { background: #0f3460; }
+
+        /* Direction button */
+        .btn-reverse { background: #607d8b; }
+        .btn-reverse.active { background: #e91e63; }
+
         @media (max-width: 700px) {
             .dashboard { grid-template-columns: 1fr; }
-            .log-panel { grid-column: 1; }
+            .log-panel, .params-panel { grid-column: 1; }
         }
     </style>
 </head>
@@ -285,7 +324,8 @@ HTML_PAGE = """
             <div class="btn-group">
                 <button class="btn btn-start" onclick="sendCmd('start')">▶ START</button>
                 <button class="btn btn-stop" onclick="sendCmd('stop')">⏹ STOP</button>
-                <button class="btn btn-reset" onclick="sendCmd('fault_reset')">🔄 FAULT RESET</button>
+                <button class="btn btn-reverse" id="btn-reverse" onclick="toggleDirection()">🔄 קדימה</button>
+                <button class="btn btn-reset" onclick="sendCmd('fault_reset')">🔧 FAULT RESET</button>
                 <button class="btn btn-fault-sim" onclick="sendCmd('sim_fault')" id="btn-sim-fault" style="{{ '' if mode == 'SIMULATOR' else 'display:none' }}">⚡ SIM FAULT</button>
                 <button class="btn btn-emergency" onclick="if(confirm('Emergency Stop?')) sendCmd('emergency_stop')">🚨 EMERGENCY STOP</button>
             </div>
@@ -312,6 +352,16 @@ HTML_PAGE = """
             </div>
         </div>
 
+        <!-- Parameters Panel -->
+        <div class="panel params-panel">
+            <h2>⚙️ פרמטרים</h2>
+            <button class="btn-toggle-params" onclick="toggleParams()">📋 הצג פרמטרים</button>
+            <table id="params-table">
+                <thead><tr><th>Parameter</th><th>Value</th><th>Description</th></tr></thead>
+                <tbody id="params-body"></tbody>
+            </table>
+        </div>
+
         <!-- Log -->
         <div class="panel log-panel">
             <h2>📋 לוג</h2>
@@ -321,6 +371,8 @@ HTML_PAGE = """
 
     <script>
         const logEl = document.getElementById('log');
+        let isReversed = false;
+        let isRunning = false;
 
         function addLog(msg, cls = 'log-info') {
             const time = new Date().toLocaleTimeString();
@@ -343,6 +395,72 @@ HTML_PAGE = """
                     addLog('ERROR: ' + data.msg, 'log-err');
                 }
                 refreshStatus();
+            } catch(e) {
+                addLog('Connection error: ' + e, 'log-err');
+            }
+        }
+
+        async function toggleDirection() {
+            if (isRunning) {
+                addLog('ERROR: עצור את המנוע לפני היפוך כיוון!', 'log-err');
+                return;
+            }
+            const newDir = !isReversed;
+            addLog(`Setting direction: ${newDir ? 'REVERSE' : 'FORWARD'}`, 'log-cmd');
+            try {
+                const resp = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'set_direction', reverse: newDir})
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    isReversed = newDir;
+                    updateDirectionBtn();
+                    addLog(data.msg, 'log-ok');
+                } else {
+                    addLog('ERROR: ' + data.msg, 'log-err');
+                }
+            } catch(e) {
+                addLog('Connection error: ' + e, 'log-err');
+            }
+        }
+
+        function updateDirectionBtn() {
+            const btn = document.getElementById('btn-reverse');
+            if (isReversed) {
+                btn.textContent = '🔄 אחורה';
+                btn.classList.add('active');
+            } else {
+                btn.textContent = '🔄 קדימה';
+                btn.classList.remove('active');
+            }
+            btn.disabled = isRunning;
+        }
+
+        let paramsVisible = false;
+        async function toggleParams() {
+            const table = document.getElementById('params-table');
+            if (paramsVisible) {
+                table.style.display = 'none';
+                paramsVisible = false;
+                return;
+            }
+            addLog('Loading parameters...', 'log-cmd');
+            try {
+                const resp = await fetch('/api/params');
+                const data = await resp.json();
+                if (!data.ok) { addLog('ERROR: ' + data.msg, 'log-err'); return; }
+                const tbody = document.getElementById('params-body');
+                tbody.innerHTML = '';
+                data.params.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td style="color:#00d4ff">${p.param}</td><td style="font-weight:bold">${p.value !== null ? p.value : 'N/A'}</td><td style="color:#888">${p.desc}</td>`;
+                    tbody.appendChild(tr);
+                });
+                table.style.display = 'table';
+                paramsVisible = true;
+                addLog(`Loaded ${data.params.length} parameters`, 'log-ok');
             } catch(e) {
                 addLog('Connection error: ' + e, 'log-err');
             }
@@ -400,6 +518,9 @@ HTML_PAGE = """
                 setIndicator('ind-fault', d.fault, 'ind-red');
                 setIndicator('ind-warning', d.warning, 'ind-orange');
 
+                isRunning = d.running;
+                updateDirectionBtn();
+
                 // Visual feedback - change body border when running
                 document.body.style.borderTop = d.running ? '4px solid #4caf50' : d.fault ? '4px solid #f44336' : '4px solid #1a1a2e';
             } catch(e) { /* silent */ }
@@ -436,6 +557,15 @@ def api_status():
     if status is None:
         return jsonify({"ok": False, "msg": "Could not read status"})
     return jsonify({"ok": True, "data": status})
+
+
+@app.route("/api/params")
+def api_params():
+    try:
+        params = drive.read_params()
+        return jsonify({"ok": True, "params": params})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
 
 
 @app.route("/api/command", methods=["POST"])
@@ -478,6 +608,16 @@ def api_command():
             drive.simulate_fault()
             return jsonify({"ok": True, "msg": "Simulated fault injected"})
         return jsonify({"ok": False, "msg": "Not in simulator mode"})
+
+    elif action == "set_direction":
+        reverse = data.get("reverse", False)
+        # Check if drive is running
+        status = drive.read_status()
+        if status and status.get("running"):
+            return jsonify({"ok": False, "msg": "עצור את המנוע לפני היפוך כיוון!"})
+        ok = drive.set_direction(reverse)
+        direction = "אחורה" if reverse else "קדימה"
+        return jsonify({"ok": ok, "msg": f"כיוון: {direction}" if ok else "Direction change failed"})
 
     return jsonify({"ok": False, "msg": f"Unknown action: {action}"}), 400
 

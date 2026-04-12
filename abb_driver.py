@@ -101,6 +101,7 @@ class RealABBDrive(ABBDriveBase):
             timeout=timeout,
         )
         self._connected = False
+        self._last_ref = 0  # Track current reference value
 
     # ── Connection ─────────────────────────────
 
@@ -110,12 +111,33 @@ class RealABBDrive(ABBDriveBase):
             if self._connected:
                 print(f"[OK] Connected to {self.client.comm_params.host} "
                       f"(Slave ID: {self.slave_id})")
+                self._setup_efb_params()
             else:
                 print("[ERROR] Could not open serial port.")
             return self._connected
         except Exception as e:
             print(f"[ERROR] Connection failed: {e}")
             return False
+
+    def _setup_efb_params(self):
+        """Set EFB (Embedded Fieldbus) parameters required for Modbus control.
+        These may revert on drive power-cycle, so we set them on every connect."""
+        params = [
+            (28, 11, 8,  "EXT1 freq ref1 = EFB"),
+            (22, 18, 8,  "EXT2 speed ref1 = EFB"),
+            (20,  6, 14, "EXT2 commands = EFB"),
+        ]
+        print("[SETUP] Configuring EFB parameters...")
+        for group, index, value, desc in params:
+            addr = config.param_addr(group, index)
+            try:
+                result = self.client.write_register(
+                    address=addr, value=value, device_id=self.slave_id
+                )
+                ok = not result.isError()
+            except Exception:
+                ok = False
+            print(f"  P{group:02d}.{index:02d} = {value} ({desc}) [{'OK' if ok else 'FAIL'}]")
 
     def disconnect(self) -> None:
         if self._connected:
@@ -145,6 +167,26 @@ class RealABBDrive(ABBDriveBase):
             print(f"[ERROR] Unexpected error writing register {address}: {e}")
             return False
 
+    def _write_registers(self, address: int, values: list[int]) -> bool:
+        """Write multiple holding registers atomically (FC16)."""
+        if not self._connected:
+            print("[ERROR] Not connected.")
+            return False
+        try:
+            result = self.client.write_registers(
+                address=address, values=values, device_id=self.slave_id
+            )
+            if result.isError():
+                print(f"[ERROR] Write registers {address} failed: {result}")
+                return False
+            return True
+        except ModbusException as e:
+            print(f"[ERROR] Modbus exception writing registers {address}: {e}")
+            return False
+        except Exception as e:
+            print(f"[ERROR] Unexpected error writing registers {address}: {e}")
+            return False
+
     def _read_registers(self, address: int, count: int) -> list[int] | None:
         """Read holding registers. Returns list of values or None."""
         if not self._connected:
@@ -167,22 +209,11 @@ class RealABBDrive(ABBDriveBase):
 
     # ── Drive Commands ─────────────────────────
 
-    def start(self) -> bool:
-        print("[CMD] Sending START...")
-        # Step 1: Send STOP first to ensure clean state machine transition
-        if not self._write_register(config.REG_CONTROL_WORD, config.CW_STOP):
-            return False
-        time.sleep(0.1)
-        # Step 2: Send RUN
-        ok = self._write_register(config.REG_CONTROL_WORD, config.CW_RUN)
-        if ok:
-            print("[OK] START command sent.")
-        return ok
-
     def stop(self) -> bool:
         print("[CMD] Sending STOP (ramp)...")
-        ok = self._write_register(config.REG_CONTROL_WORD, config.CW_STOP)
+        ok = self._write_registers(0, [config.CW_STOP, 0])
         if ok:
+            self._last_ref = 0
             print("[OK] STOP command sent.")
         return ok
 
@@ -211,8 +242,10 @@ class RealABBDrive(ABBDriveBase):
             return False
         raw = int(percent * config.SPEED_REF_SCALE / 100.0)
         raw = max(0, min(config.SPEED_REF_SCALE, raw))
-        print(f"[CMD] Setting speed to {percent:.1f}% (raw: {raw})")
-        ok = self._write_register(config.REG_SPEED_REF, raw)
+        self._last_ref = raw
+        ref = self._ref_with_direction(raw)
+        print(f"[CMD] Setting speed to {percent:.1f}% (ref: {self._signed16(ref)})")
+        ok = self._write_registers(0, [config.CW_RUN, ref])
         if ok:
             print(f"[OK] Speed set to {percent:.1f}%")
         return ok
@@ -253,6 +286,65 @@ class RealABBDrive(ABBDriveBase):
             "frequency_hz": round(freq_hz, 1),
             "current_a": round(current_a, 2),
         }
+
+    def read_params(self) -> dict:
+        """Read key drive parameters for display."""
+        param_list = [
+            (1, 1, "Motor speed"),
+            (1, 7, "Output frequency"),
+            (1, 8, "Output current"),
+            (1, 9, "Motor torque"),
+            (1, 10, "Motor power"),
+            (1, 11, "DC bus voltage"),
+            (3, 9, "EFB ref1 actual"),
+            (19, 12, "EXT1 ctrl mode"),
+            (19, 14, "EXT2 ctrl mode"),
+            (20, 1, "EXT1 commands"),
+            (20, 6, "EXT2 commands"),
+            (22, 11, "EXT1 speed ref1"),
+            (22, 18, "EXT2 speed ref1"),
+            (28, 11, "EXT1 freq ref1"),
+            (46, 1, "Speed scaling"),
+            (46, 2, "Freq scaling"),
+            (58, 3, "Node address"),
+            (58, 4, "Baud rate"),
+        ]
+        result = []
+        for g, i, desc in param_list:
+            addr = config.param_addr(g, i)
+            regs = self._read_registers(addr, 1)
+            val = self._signed16(regs[0]) if regs and len(regs) > 0 else None
+            result.append({
+                "param": f"P{g:02d}.{i:02d}",
+                "value": val,
+                "desc": desc,
+            })
+        return result
+
+    def set_direction(self, reverse: bool) -> bool:
+        """Set motor direction. Only call when motor is stopped!
+        ACS180 uses signed reference: negative = reverse."""
+        direction = "REVERSE" if reverse else "FORWARD"
+        print(f"[CMD] Setting direction: {direction}")
+        self._reverse = reverse
+        print(f"[OK] Direction set to {direction}")
+        return True
+
+    def _ref_with_direction(self, raw: int) -> int:
+        """Apply direction sign and convert to uint16 for Modbus."""
+        signed_val = -raw if getattr(self, '_reverse', False) else raw
+        return signed_val & 0xFFFF  # two's complement for uint16
+
+    def start(self) -> bool:
+        print("[CMD] Sending START...")
+        if not self._write_register(config.REG_CONTROL_WORD, config.CW_STOP):
+            return False
+        time.sleep(0.1)
+        ref = self._ref_with_direction(self._last_ref)
+        ok = self._write_registers(0, [config.CW_RUN, ref])
+        if ok:
+            print(f"[OK] START sent (ref={self._signed16(ref)}).")
+        return ok
 
 
 # ══════════════════════════════════════════════
@@ -347,3 +439,11 @@ class MockABBDrive(ABBDriveBase):
         self._fault = True
         self._running = False
         print("[MOCK] ⚡ Simulated FAULT injected!")
+
+    def read_params(self) -> list:
+        return [{"param": "P01.01", "value": 0, "desc": "Mock param"}]
+
+    def set_direction(self, reverse: bool) -> bool:
+        self._reverse = reverse
+        print(f"[MOCK] Direction: {'REVERSE' if reverse else 'FORWARD'}")
+        return True
