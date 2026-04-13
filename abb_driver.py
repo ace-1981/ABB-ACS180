@@ -8,6 +8,7 @@ Two implementations:
 Both share the same interface (ABBDriveBase).
 """
 
+import threading
 import time
 from abc import ABC, abstractmethod
 
@@ -102,6 +103,7 @@ class RealABBDrive(ABBDriveBase):
         )
         self._connected = False
         self._last_ref = 0  # Track current reference value
+        self._lock = threading.Lock()  # Serialize all Modbus access
 
     # ── Connection ─────────────────────────────
 
@@ -123,9 +125,11 @@ class RealABBDrive(ABBDriveBase):
         """Set EFB (Embedded Fieldbus) parameters required for Modbus control.
         Reads first, writes only if needed, then saves to NVM permanently."""
         params = [
-            (28, 11, 8,  "EXT1 freq ref1 = EFB"),
-            (22, 18, 8,  "EXT2 speed ref1 = EFB"),
+            (20,  1, 14, "EXT1 commands = EFB"),
             (20,  6, 14, "EXT2 commands = EFB"),
+            (22, 11,  8, "EXT1 speed ref1 = EFB"),
+            (22, 18,  8, "EXT2 speed ref1 = EFB"),
+            (28, 11,  8, "EXT1 freq ref1 = EFB"),
         ]
         print("[SETUP] Checking EFB parameters...")
         changed = False
@@ -138,13 +142,7 @@ class RealABBDrive(ABBDriveBase):
                 print(f"  P{group:02d}.{index:02d} = {value} ({desc}) [OK already]")
                 continue
             # Need to write
-            try:
-                result = self.client.write_register(
-                    address=addr, value=value, device_id=self.slave_id
-                )
-                ok = not result.isError()
-            except Exception:
-                ok = False
+            ok = self._write_register(addr, value)
             print(f"  P{group:02d}.{index:02d} = {current} → {value} ({desc}) [{'OK' if ok else 'FAIL'}]")
             if ok:
                 changed = True
@@ -157,19 +155,12 @@ class RealABBDrive(ABBDriveBase):
     def _save_params_to_nvm(self):
         """Save all parameter changes to permanent memory via P96.07."""
         print("[SETUP] Saving parameters to NVM (P96.07)...")
-        try:
-            result = self.client.write_register(
-                address=config.PARAM_SAVE_ADDR,
-                value=config.PARAM_SAVE_VALUE,
-                device_id=self.slave_id,
-            )
-            if result.isError():
-                print(f"[ERROR] P96.07 save failed: {result}")
-            else:
-                time.sleep(1)  # Give drive time to write to flash
-                print("[OK] Parameters saved to permanent memory!")
-        except Exception as e:
-            print(f"[ERROR] P96.07 save exception: {e}")
+        ok = self._write_register(config.PARAM_SAVE_ADDR, config.PARAM_SAVE_VALUE)
+        if ok:
+            time.sleep(1)  # Give drive time to write to flash
+            print("[OK] Parameters saved to permanent memory!")
+        else:
+            print("[ERROR] P96.07 save failed")
 
     def disconnect(self) -> None:
         if self._connected:
@@ -184,60 +175,63 @@ class RealABBDrive(ABBDriveBase):
         if not self._connected:
             print("[ERROR] Not connected.")
             return False
-        try:
-            result = self.client.write_register(
-                address=address, value=value, device_id=self.slave_id
-            )
-            if result.isError():
-                print(f"[ERROR] Write register {address} failed: {result}")
+        with self._lock:
+            try:
+                result = self.client.write_register(
+                    address=address, value=value, device_id=self.slave_id
+                )
+                if result.isError():
+                    print(f"[ERROR] Write register {address} failed: {result}")
+                    return False
+                return True
+            except ModbusException as e:
+                print(f"[ERROR] Modbus exception writing register {address}: {e}")
                 return False
-            return True
-        except ModbusException as e:
-            print(f"[ERROR] Modbus exception writing register {address}: {e}")
-            return False
-        except Exception as e:
-            print(f"[ERROR] Unexpected error writing register {address}: {e}")
-            return False
+            except Exception as e:
+                print(f"[ERROR] Unexpected error writing register {address}: {e}")
+                return False
 
     def _write_registers(self, address: int, values: list[int]) -> bool:
         """Write multiple holding registers atomically (FC16)."""
         if not self._connected:
             print("[ERROR] Not connected.")
             return False
-        try:
-            result = self.client.write_registers(
-                address=address, values=values, device_id=self.slave_id
-            )
-            if result.isError():
-                print(f"[ERROR] Write registers {address} failed: {result}")
+        with self._lock:
+            try:
+                result = self.client.write_registers(
+                    address=address, values=values, device_id=self.slave_id
+                )
+                if result.isError():
+                    print(f"[ERROR] Write registers {address} failed: {result}")
+                    return False
+                return True
+            except ModbusException as e:
+                print(f"[ERROR] Modbus exception writing registers {address}: {e}")
                 return False
-            return True
-        except ModbusException as e:
-            print(f"[ERROR] Modbus exception writing registers {address}: {e}")
-            return False
-        except Exception as e:
-            print(f"[ERROR] Unexpected error writing registers {address}: {e}")
-            return False
+            except Exception as e:
+                print(f"[ERROR] Unexpected error writing registers {address}: {e}")
+                return False
 
     def _read_registers(self, address: int, count: int) -> list[int] | None:
         """Read holding registers. Returns list of values or None."""
         if not self._connected:
             print("[ERROR] Not connected.")
             return None
-        try:
-            result = self.client.read_holding_registers(
-                address=address, count=count, device_id=self.slave_id
-            )
-            if result.isError():
-                print(f"[ERROR] Read register {address} failed: {result}")
+        with self._lock:
+            try:
+                result = self.client.read_holding_registers(
+                    address=address, count=count, device_id=self.slave_id
+                )
+                if result.isError():
+                    print(f"[ERROR] Read register {address} failed: {result}")
+                    return None
+                return result.registers
+            except ModbusException as e:
+                print(f"[ERROR] Modbus exception reading register {address}: {e}")
                 return None
-            return result.registers
-        except ModbusException as e:
-            print(f"[ERROR] Modbus exception reading register {address}: {e}")
-            return None
-        except Exception as e:
-            print(f"[ERROR] Unexpected error reading register {address}: {e}")
-            return None
+            except Exception as e:
+                print(f"[ERROR] Unexpected error reading register {address}: {e}")
+                return None
 
     # ── Drive Commands ─────────────────────────
 

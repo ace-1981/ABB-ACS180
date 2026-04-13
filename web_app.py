@@ -26,6 +26,7 @@ demo_lock = threading.Lock()
 demo_stop_event = threading.Event()
 demo_active = False
 demo_name = ""
+demo_phase = 0
 shutdown_done = False
 
 
@@ -347,9 +348,94 @@ HTML_PAGE = """
         .btn-reverse { background: #607d8b; }
         .btn-reverse.active { background: #e91e63; }
 
+        /* Demo side panel */
+        .demo-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 340px;
+            height: 100vh;
+            background: #0d1b2a;
+            border-right: 2px solid #00d4ff;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px 16px;
+            box-shadow: 4px 0 20px rgba(0,212,255,0.15);
+            transition: transform 0.3s ease;
+        }
+        .demo-overlay.visible { display: block; }
+        .demo-overlay h3 {
+            color: #00d4ff;
+            font-size: 1.1em;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #0f3460;
+            text-align: center;
+        }
+        .demo-phase {
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+            background: #16213e;
+            transition: all 0.4s ease;
+            direction: rtl;
+        }
+        .demo-phase .phase-num {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            border-radius: 50%;
+            background: #0f3460;
+            color: #888;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .demo-phase .phase-title {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .demo-phase .phase-desc {
+            font-size: 0.78em;
+            color: #888;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .demo-phase.done {
+            border-color: #2e7d32;
+            background: #17331d;
+        }
+        .demo-phase.done .phase-num {
+            background: #4caf50;
+            color: #fff;
+        }
+        .demo-phase.done .phase-title { color: #8de39a; }
+        .demo-phase.active {
+            border-color: #00d4ff;
+            background: #0f3460;
+            box-shadow: 0 0 12px rgba(0,212,255,0.25);
+        }
+        .demo-phase.active .phase-num {
+            background: #00d4ff;
+            color: #000;
+            animation: pulse-phase 1s infinite;
+        }
+        .demo-phase.active .phase-title { color: #00d4ff; }
+        .demo-phase.active .phase-desc { color: #aaa; }
+        @keyframes pulse-phase {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
         @media (max-width: 700px) {
             .dashboard { grid-template-columns: 1fr; }
             .log-panel, .params-panel { grid-column: 1; }
+            .demo-overlay { width: 280px; }
         }
     </style>
 </head>
@@ -359,6 +445,46 @@ HTML_PAGE = """
     <span class="mode-badge {{ 'mode-sim' if mode == 'SIMULATOR' else 'mode-real' }}">{{ mode }}</span>
     <div class="conn-banner {{ 'conn-ok' if drive_connected else 'conn-err' }}">
         {{ connection_message }}
+    </div>
+
+    <!-- Demo Side Panel -->
+    <div class="demo-overlay" id="demo-panel">
+        <h3>🤖 AI Servo Demo</h3>
+        <div class="demo-phase" id="dp-1">
+            <span class="phase-num">1</span>
+            <span class="phase-title">Speed Oscillation</span>
+            <div class="phase-desc">תנודות מהירות בין 15%-55% — המנוע מאיץ ומאט, שליטה דינמית בזמן אמת</div>
+        </div>
+        <div class="demo-phase" id="dp-2">
+            <span class="phase-num">2</span>
+            <span class="phase-title">Smooth Ramp + Brake</span>
+            <div class="phase-desc">תאוצה חלקה עד 80% → החזקה → בלימה מבוקרת חזרה ל-5%</div>
+        </div>
+        <div class="demo-phase" id="dp-3">
+            <span class="phase-num">3</span>
+            <span class="phase-title">Direction Reversals</span>
+            <div class="phase-desc">היפוכי כיוון בטוחים — עצירה מלאה, היפוך, האצה מחדש ×3 סבבים</div>
+        </div>
+        <div class="demo-phase" id="dp-4">
+            <span class="phase-num">4</span>
+            <span class="phase-title">Sawtooth Pattern</span>
+            <div class="phase-desc">רמפה חדה לשיא (50%-75%) → ירידה מהירה → חוזר, כמו שיני מסור</div>
+        </div>
+        <div class="demo-phase" id="dp-5">
+            <span class="phase-num">5</span>
+            <span class="phase-title">Precision Speed Jumps</span>
+            <div class="phase-desc">קפיצות מדויקות: 15→55→10→65→20→70→15→50→30→60%</div>
+        </div>
+        <div class="demo-phase" id="dp-6">
+            <span class="phase-num">6</span>
+            <span class="phase-title">Reverse Oscillation</span>
+            <div class="phase-desc">תנודות מהירות בכיוון הפוך (15%-50%) — שליטה דו-כיוונית</div>
+        </div>
+        <div class="demo-phase" id="dp-7">
+            <span class="phase-num">7</span>
+            <span class="phase-title">Grand Finale</span>
+            <div class="phase-desc">תנודות מהירות 10%↔65% ×4 → burst סופי ל-85% → ירידה חלקה!</div>
+        </div>
     </div>
 
     <div class="dashboard">
@@ -632,6 +758,7 @@ HTML_PAGE = """
                 document.getElementById('current').textContent = d.current_a.toFixed(2) + ' A';
                 document.getElementById('status-word').textContent = d.status_hex;
                 demoActive = !!d.demo_active;
+                updateDemoPanel(demoActive, d.demo_phase || 0);
 
                 setIndicator('ind-ready', d.ready, 'ind-green');
                 setIndicator('ind-running', d.running, 'ind-blue');
@@ -650,6 +777,19 @@ HTML_PAGE = """
         function setIndicator(id, active, activeClass) {
             const el = document.getElementById(id);
             el.className = 'indicator ' + (active ? activeClass : 'ind-off');
+        }
+
+        function updateDemoPanel(active, phase) {
+            const panel = document.getElementById('demo-panel');
+            if (active) {
+                panel.classList.add('visible');
+                for (let i = 1; i <= 7; i++) {
+                    const el = document.getElementById('dp-' + i);
+                    el.className = 'demo-phase' + (i < phase ? ' done' : i === phase ? ' active' : '');
+                }
+            } else {
+                panel.classList.remove('visible');
+            }
         }
 
         // Auto-refresh every 1 second
@@ -692,6 +832,7 @@ def api_status():
         return jsonify({"ok": False, "msg": "Could not read status"})
     status["demo_active"] = demo_active
     status["demo_name"] = demo_name
+    status["demo_phase"] = demo_phase
     return jsonify({"ok": True, "data": status})
 
 
@@ -779,32 +920,78 @@ def _demo_wait(seconds: float) -> bool:
     return True
 
 
-def _demo_set_running_speed(percent: float) -> bool:
+def _demo_set_running_speed(percent: float, hold: float = 0.5) -> bool:
     if demo_stop_event.is_set():
         return False
     if not drive.set_speed(percent):
         return False
-    return _demo_wait(0.28)
+    return _demo_wait(hold)
 
 
-def _demo_quick_stop_restart(restart_speed: float, hold_s: float = 0.22) -> bool:
-    """Fast stop + fast restart pulse during demo."""
+def _demo_quick_stop_restart(restart_speed: float, hold_s: float = 0.8) -> bool:
+    """Ramp stop + restart pulse during demo."""
     if demo_stop_event.is_set():
         return False
-    if not drive.emergency_stop():
+    if not drive.stop():
         return False
     if not _demo_wait(hold_s):
         return False
     if not drive.start():
         return False
-    return _demo_set_running_speed(restart_speed)
+    return _demo_set_running_speed(restart_speed, 0.4)
 
 
-def _demo_run_profile(speeds: list[float], fast_stop_at: set[int] | None = None) -> bool:
-    """Run profile with optional fast stop/restart pulses by index."""
+def _demo_direction_switch(reverse: bool, start_speed: float = 0) -> bool:
+    """Ramp stop, wait for motor to stop, switch direction, restart."""
+    if demo_stop_event.is_set():
+        return False
+    # Ramp down to 0 first
+    if not drive.set_speed(0):
+        return False
+    if not _demo_wait(0.5):
+        return False
+    if not drive.stop():
+        return False
+    if not _demo_wait(1.5):  # Wait for motor to fully stop
+        return False
+    if not drive.set_direction(reverse):
+        return False
+    if not drive.start():
+        return False
+    if start_speed > 0:
+        return _demo_set_running_speed(start_speed, 0.5)
+    return True
+
+
+def _demo_ramp(start: float, end: float, steps: int = 6, step_time: float = 0.3) -> bool:
+    """Smooth ramp from start% to end% speed."""
+    for i in range(steps + 1):
+        if demo_stop_event.is_set():
+            return False
+        pct = start + (end - start) * i / steps
+        if not drive.set_speed(pct):
+            return False
+        if not _demo_wait(step_time):
+            return False
+    return True
+
+
+def _demo_oscillate(low: float, high: float, cycles: int = 3, step_time: float = 0.3) -> bool:
+    """Speed oscillation – motor stays running, speed sweeps up and down."""
+    for _ in range(cycles):
+        if not _demo_ramp(low, high, steps=4, step_time=step_time):
+            return False
+        if not _demo_ramp(high, low, steps=4, step_time=step_time):
+            return False
+    return True
+
+
+def _demo_run_profile(speeds: list[float], fast_stop_at: set[int] | None = None,
+                       hold: float = 0.6) -> bool:
+    """Run profile with optional stop/restart pulses by index."""
     pulse_indices = fast_stop_at or set()
     for idx, speed in enumerate(speeds):
-        if not _demo_set_running_speed(speed):
+        if not _demo_set_running_speed(speed, hold):
             return False
         if idx in pulse_indices:
             restart_speed = max(12.0, speed - 6.0)
@@ -814,72 +1001,107 @@ def _demo_run_profile(speeds: list[float], fast_stop_at: set[int] | None = None)
 
 
 def _run_demo_sequence() -> None:
-    global demo_active, demo_name
+    global demo_active, demo_name, demo_phase
     try:
-        print("[DEMO] Starting servo-style demonstration...")
+        print("[DEMO] === AI Servo Demo Starting ===")
         drive.stop()
-        if not _demo_wait(0.35):
+        if not _demo_wait(0.5):
             return
 
+        # ── Phase 1: Speed oscillation – motor stays running ──
+        demo_phase = 1
+        print("[DEMO] Phase 1: Speed oscillation")
         if not drive.set_direction(False):
             return
         if not drive.start():
             return
-
-        # Forward: rapid ramps + one fast stop/restart pulse
-        if not _demo_run_profile([12, 24, 42, 58, 36, 52, 28], fast_stop_at={3}):
+        if not _demo_ramp(5, 30, steps=4, step_time=0.3):
+            return
+        if not _demo_oscillate(15, 55, cycles=3, step_time=0.25):
             return
 
-        if not drive.stop():
+        # ── Phase 2: Smooth ramp to high speed + ramp brake ──
+        demo_phase = 2
+        print("[DEMO] Phase 2: Smooth ramp + brake")
+        if not _demo_ramp(15, 80, steps=10, step_time=0.25):
             return
-        if not _demo_wait(0.45):
+        if not _demo_wait(0.8):
             return
-
-        # Reverse direction demo
-        if not drive.set_direction(True):
-            return
-        if not drive.start():
-            return
-
-        # Reverse: varied speeds + one fast stop/restart pulse
-        if not _demo_run_profile([16, 34, 50, 30, 56, 22, 40], fast_stop_at={2}):
-            return
-
-        if not drive.stop():
-            return
-        if not _demo_wait(0.4):
-            return
-
-        # Back to forward for final fast pulses
-        if not drive.set_direction(False):
-            return
-        if not drive.start():
-            return
-
-        if not _demo_run_profile([20, 45, 25, 60, 18], fast_stop_at={1, 3}):
-            return
-
-        # Final fast stop and clean finish
-        if not drive.emergency_stop():
-            return
-        if not _demo_wait(0.25):
-            return
-        if not drive.start():
-            return
-        if not _demo_set_running_speed(14):
+        if not _demo_ramp(80, 5, steps=8, step_time=0.2):
             return
         if not drive.stop():
             return
-        if not _demo_wait(0.25):
+        if not _demo_wait(1.0):
             return
 
-        print("[DEMO] Demo finished successfully.")
+        # ── Phase 3: Direction changes with proper stops ──
+        demo_phase = 3
+        print("[DEMO] Phase 3: Direction reversals")
+        for speed in [35, 50, 40]:
+            if not _demo_direction_switch(True, speed):
+                return
+            if not _demo_wait(1.2):
+                return
+            if not _demo_direction_switch(False, speed):
+                return
+            if not _demo_wait(1.2):
+                return
+
+        # ── Phase 4: Sawtooth – ramp up, ramp down, repeat ──
+        demo_phase = 4
+        print("[DEMO] Phase 4: Sawtooth pattern")
+        for peak in [50, 65, 75, 60]:
+            if not _demo_ramp(10, peak, steps=5, step_time=0.2):
+                return
+            if not _demo_ramp(peak, 10, steps=3, step_time=0.2):
+                return
+            if not _demo_wait(0.3):
+                return
+
+        # ── Phase 5: Speed steps (precision jumps) ──
+        demo_phase = 5
+        print("[DEMO] Phase 5: Precision speed jumps")
+        if not _demo_run_profile(
+            [15, 55, 10, 65, 20, 70, 15, 50, 30, 60],
+            fast_stop_at={3, 7}, hold=0.5
+        ):
+            return
+
+        # ── Phase 6: Reverse cruise + oscillation ──
+        demo_phase = 6
+        print("[DEMO] Phase 6: Reverse oscillation")
+        if not _demo_direction_switch(True, 20):
+            return
+        if not _demo_oscillate(15, 50, cycles=3, step_time=0.3):
+            return
+
+        # ── Phase 7: Grand finale – fast sweeps + burst ──
+        demo_phase = 7
+        print("[DEMO] Phase 7: Grand finale")
+        if not _demo_direction_switch(False, 10):
+            return
+        if not _demo_oscillate(10, 65, cycles=4, step_time=0.2):
+            return
+        # Final burst
+        if not _demo_ramp(10, 85, steps=8, step_time=0.2):
+            return
+        if not _demo_wait(0.6):
+            return
+        if not _demo_ramp(85, 0, steps=6, step_time=0.25):
+            return
+        if not drive.stop():
+            return
+        if not _demo_wait(0.5):
+            return
+
+        print("[DEMO] === AI Servo Demo Complete ===")
     finally:
         drive.stop()
         drive.set_direction(False)
         with demo_lock:
             demo_active = False
             demo_name = ""
+            demo_phase = 0
             demo_stop_event.clear()
         print("[DEMO] Demo state cleared.")
 
